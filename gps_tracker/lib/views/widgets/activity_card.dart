@@ -31,6 +31,8 @@ class ActivityCard extends StatelessWidget{
               options: const MapOptions(
                 initialCenter: LatLng(46.992979, 6.931933),
                 initialZoom: 13.0,
+                minZoom: 13.0,
+                maxZoom: 13.0,
               ),
               children: [
                 TileLayer(

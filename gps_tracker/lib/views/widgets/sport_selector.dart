@@ -28,7 +28,10 @@ class SportSelector extends StatelessWidget{
       onTap: () => onSportChanged(sport),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        child: Align(
+          alignment: Alignment.center,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -43,6 +46,7 @@ class SportSelector extends StatelessWidget{
             ),
           ],
         ),
+      ),
       ),
     );
   }

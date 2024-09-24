@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gps_tracker/views/widgets/activity_card.dart';
 import 'package:gps_tracker/views/widgets/sport_selector.dart';
+import 'package:gps_tracker/services/strava_service.dart';
 
 class ActivityPage extends StatefulWidget{
   @override
@@ -8,17 +9,36 @@ class ActivityPage extends StatefulWidget{
 }
 
 class _ActivityPageState extends State<ActivityPage>{
+  final StravaService stravaService = StravaService();
+  List<dynamic> routes =[];
   // Variables pour les filtres
   String selectedSport = 'Run'; // Sport initial sélectionné
   double selectedDifficulty = 2.0; // Filtrage par difficulté
   double selectedDistance = 10.0; // Distance en km
   double selectedElevation = 200.0; // Dénivelé en 
+
+  @override
+  void initState(){
+    super.initState();
+    fetchRoutes();
+  }
+
+  void fetchRoutes() async{
+  try{
+    final fetchedRoutes = await stravaService.fetchRoutes('20722692');
+    setState(() {
+      routes = fetchedRoutes;
+    });
+  }catch (e){
+    print('Erreur lors de la récupération des itinéraires : $e');
+  }
+  }
   
   @override
   Widget build(BuildContext context){
     return Scaffold(
       appBar: AppBar(
-        title: Text('Activités sportives'),
+        title: const Text('Activités sportives'),
       ),
       body: Column(
         children: [
@@ -33,7 +53,7 @@ class _ActivityPageState extends State<ActivityPage>{
           ),
           //Filtres
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -79,10 +99,11 @@ class _ActivityPageState extends State<ActivityPage>{
             child: ListView.builder(
               itemCount: 5,
               itemBuilder: (context,index){
+                final route = routes[index];
                 return ActivityCard(
-                  title: 'Activité ${index+1}',
-                  distance: selectedDistance,
-                  elevation: selectedElevation,
+                  title: route['name'],
+                  distance: route['distance'] ?? selectedDistance,
+                  elevation: route['elevation_gain'] ?? selectedElevation,
                 );
               },
             ),

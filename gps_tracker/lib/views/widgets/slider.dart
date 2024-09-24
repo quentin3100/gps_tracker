@@ -29,7 +29,7 @@ class Slider extends StatelessWidget{
             ),
             Text(
               value.toStringAsFixed(1),
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.black),
             ),
           ],
         ),
