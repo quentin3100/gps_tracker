@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:gps_tracker/models/activity.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:path_provider/path_provider.dart';
 
 
 class StravaService {
@@ -59,7 +63,7 @@ class StravaService {
   }
 
   //Récupérer les itinéraires
-  Future<List<dynamic>> fetchRoutes(String athleteId) async{
+  Future<List<Activity>> fetchRoutes(String athleteId) async{
     await _loadConfig();
     if(accessToken.isEmpty){
       throw Exception('Token d\'accès introuvable');
@@ -79,21 +83,62 @@ class StravaService {
       return await fetchRoutes(athleteId);
     }
     if(response.statusCode == 200){
-      final routes = json.decode(response.body);
-      List<Map<String,dynamic>> routeData =[];
-      for(var route in routes){
-        routeData.add({
-          'name':route['name'],
-          'distance':route['distance'],
-          'elevation_gain':route['elevation_gain'],
-          'polyline':route['map']['summary_polyline'],
-        });
-
-      }
-      return routeData;
+      final List<dynamic> activitiesJson = json.decode(response.body);
+      List<Activity> activities = activitiesJson.map((json)=>Activity.fromJson(json)).toList();
+      return activities;
+      
       
     }else{
       throw Exception('Echec du chargement des itinéraires : ${response.statusCode}');
+    }
+  }
+
+  Future<void> downloadTCX(int routeId)async{
+    final url = 'https://www.strava.com/api/v3/routes/$routeId/export_tcx';
+    try{
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization':'Bearer $accessToken',
+        }
+      );
+      if(response.statusCode == 200){
+        final directory=await getApplicationDocumentsDirectory();
+        final filePath = '${directory.path}/route_$routeId.tcx';
+        final file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+        debugPrint('Fichier TCX téléchargé avec succès à : $filePath');
+      }else{
+        throw Exception('Erreur lors du téléchargement du fichier TCX');
+      }
+      
+    }catch(e){
+      debugPrint('Erreur lors du téléchargement du TCX: $e');
+      throw Exception('Erreur lors du téléchargement du TCX');
+    }
+  }
+
+  Future<void> downloadGpx(String routeId) async{
+    final url = 'https://www.strava.com/api/v3/routes/$routeId/export_gpx'; 
+    try{
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization':'Bearer $accessToken',
+        }
+      );
+      if(response.statusCode==200){
+        final directory = await getApplicationDocumentsDirectory();
+        final filePath = '${directory.path}/route_$routeId.gpx';
+        final file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+        debugPrint('Fichier GPX téléchargé avec succès à : $filePath');
+      }else{
+        throw Exception('Erreur lors du téléchargement du fichier GPX');
+      }
+    }catch(e){
+      debugPrint('Erreur lors du téléchargement du GPX: $e activité id : $routeId');
+      throw Exception('Erreur lors du téléchargement du GPX');
     }
   }
 

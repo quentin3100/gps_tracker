@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:gps_tracker/models/activity.dart';
+import 'package:gps_tracker/views/activity_detail.dart';
+
 import 'package:gps_tracker/views/widgets/activity_card.dart';
 import 'package:gps_tracker/views/widgets/sport_selector.dart';
 import 'package:gps_tracker/services/strava_service.dart';
@@ -11,7 +14,7 @@ class ActivityPage extends StatefulWidget {
 
 class _ActivityPageState extends State<ActivityPage> {
   final StravaService stravaService = StravaService();
-  List<dynamic> routes = [];
+  List<Activity> activities = [];
   // Variables pour les filtres
   String selectedSport = 'Run'; // Sport initial sélectionné
   double selectedDifficulty = 2.0; // Filtrage par difficulté
@@ -28,10 +31,44 @@ class _ActivityPageState extends State<ActivityPage> {
     try {
       final fetchedRoutes = await stravaService.fetchRoutes('20722692');
       setState(() {
-        routes = fetchedRoutes;
+        activities = fetchedRoutes;
       });
     } catch (e) {
       print('Erreur lors de la récupération des itinéraires : $e');
+    }
+  }
+
+  Map<String, dynamic> getActivityDetails(int index){
+    switch (index) {
+      case 0:
+        return {
+          'description': 'Description de l\'itinéraire 1',
+          'technicalLevel': 3.0,
+          'landscapeLevel': 4.0,
+          'physicalLevel': 4.5,
+        };
+      case 1:
+        return {
+          'description': 'Description de l\'itinéraire 2',
+          'technicalLevel': 4.0,
+          'landscapeLevel': 3.0,
+          'physicalLevel': 4.0,
+        };
+      case 2:
+        return {
+          'description': 'Description de l\'itinéraire 3',
+          'technicalLevel': 2.5,
+          'landscapeLevel': 5.0,
+          'physicalLevel': 3.5,
+        };
+      // Ajoutez d'autres cas selon vos besoins
+      default:
+        return {
+          'description': 'Description par défaut',
+          'technicalLevel': 2.0,
+          'landscapeLevel': 2.0,
+          'physicalLevel': 2.0,
+        };
     }
   }
 
@@ -99,26 +136,42 @@ class _ActivityPageState extends State<ActivityPage> {
           //Liste des activités
           Expanded(
             child: ListView.builder(
-              itemCount: routes.length,
+              itemCount: activities.length,
               itemBuilder: (context, index) {
-                final route = routes[index];
-                final routePoints =
-                    stravaService.decodePolyline(route['polyline']);
+                final route = activities[index];
+                final routePoints = stravaService.decodePolyline(route.summaryPolyline);
 
-                return Column(
-                  children: [
-                    ActivityCard(
-                      title: route['name'],
-                      distance: route['distance']/100 ?? selectedDistance,
-                      elevation: route['elevation_gain'] ?? selectedElevation,
-                      routePoints: routePoints,
-                    ),
-                   
-                  ],
+                return ActivityCard(
+                  title: route.name,
+                  distance: route.distance,
+                  elevation: route.elevationGain,
+                  routePoints: routePoints,
+                  onTap: () {
+                    // Récupérer les détails de l'activité en fonction de l'index
+                    final details = getActivityDetails(index);
+
+                    // Navigation vers la page de détails de l'itinéraire
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ActivityDetailPage(
+                          id: route.id,
+                          title: route.name,
+                          distance: route.distance,
+                          elevation: route.elevationGain,
+                          description: details['description'],
+                          technicalLevel: details['technicalLevel'],
+                          landscapeLevel: details['landscapeLevel'],
+                          physicalLevel: details['physicalLevel'],
+                          routePoints: routePoints,
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
-          )
+          ),
         ],
       ),
     );
