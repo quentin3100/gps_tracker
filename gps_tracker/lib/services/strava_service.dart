@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 
 class StravaService {
@@ -77,14 +79,38 @@ class StravaService {
       return await fetchRoutes(athleteId);
     }
     if(response.statusCode == 200){
-      return json.decode(response.body);
+      final routes = json.decode(response.body);
+      List<Map<String,dynamic>> routeData =[];
+      for(var route in routes){
+        routeData.add({
+          'name':route['name'],
+          'distance':route['distance'],
+          'elevation_gain':route['elevation_gain'],
+          'polyline':route['map']['summary_polyline'],
+        });
+
+      }
+      return routeData;
       
     }else{
       throw Exception('Echec du chargement des itinéraires : ${response.statusCode}');
     }
   }
 
+// Fonction pour décoder le polyline en une liste de points LatLng
+  List<LatLng> decodePolyline(String polyline) {
+  List<LatLng> points = [];
+  
+  PolylinePoints polylinePoints = PolylinePoints();
+  List<PointLatLng>decodedPoints = polylinePoints.decodePolyline(polyline);
 
+  if(decodedPoints.isNotEmpty){
+    for(var point in decodedPoints){
+      points.add(LatLng(point.latitude, point.longitude));
+    }
+  }
+  return points;
+}
 
   
 }

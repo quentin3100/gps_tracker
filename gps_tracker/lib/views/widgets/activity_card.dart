@@ -7,11 +7,13 @@ class ActivityCard extends StatelessWidget{
   final String title;
   final double distance;
   final double elevation;
+  final List<LatLng> routePoints;
 
   const ActivityCard({super.key, 
     required this.title,
     required this.distance,
     required this.elevation,
+    required this.routePoints,
   });
 
   @override
@@ -23,16 +25,17 @@ class ActivityCard extends StatelessWidget{
         children: [
           ListTile(
             title: Text(title),
-            subtitle: Text('Distance: ${distance.toStringAsFixed(1)} km, Dénivelé: ${elevation.toStringAsFixed(0)} m'),
+            subtitle: Text('Distance: ${(distance/10).toStringAsFixed(1)} km, Dénivelé: ${elevation.toStringAsFixed(0)} m'),
           ),
           Container(
             height: 200,
             child: FlutterMap(
-              options: const MapOptions(
-                initialCenter: LatLng(46.992979, 6.931933),
+              options: MapOptions(
+                initialCenter:  routePoints.isNotEmpty ? routePoints.first :  const LatLng(46.9889, 6.9293),
                 initialZoom: 13.0,
                 minZoom: 13.0,
                 maxZoom: 13.0,
+                
               ),
               children: [
                 TileLayer(
@@ -42,10 +45,7 @@ class ActivityCard extends StatelessWidget{
                 PolylineLayer(
                   polylines: [
                     Polyline(
-                      points: [
-                        const LatLng(46.992979, 6.931933), //Point A (Neuchâtel)
-                        const LatLng(46.996450, 6.938223), //Point B (point statique)
-                      ],
+                      points: routePoints,
                       strokeWidth: 4.0,
                       color: Colors.blue,
                     )
