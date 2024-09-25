@@ -11,6 +11,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart'as path;
+import 'package:open_file/open_file.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 
 
@@ -138,7 +140,7 @@ class StravaService {
     }
   }
 
-  Future<void> downloadTCX(int routeId)async{
+  Future<void> downloadTCX(String routeId)async{
     final url = 'https://www.strava.com/api/v3/routes/$routeId/export_tcx';
     try{
       final response = await http.get(
@@ -148,11 +150,45 @@ class StravaService {
         }
       );
       if(response.statusCode == 200){
-        final directory=await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/route_$routeId.tcx';
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
-        debugPrint('Fichier TCX téléchargé avec succès à : $filePath');
+        Directory? downloadsDirectory;
+        if(Platform.isAndroid){
+          downloadsDirectory=await getExternalStorageDirectory();
+        }else if(Platform.isIOS){
+          downloadsDirectory = await getApplicationDocumentsDirectory();
+        }
+
+        if(downloadsDirectory!=null){
+          final downloadPath = path.join(downloadsDirectory.path,'Download');
+          final downloadDir = Directory(downloadPath);
+
+          if(! await downloadDir.exists()){
+            await downloadDir.create(recursive: true);
+          }
+          final filePath = path.join(downloadPath, 'route_$routeId.tcx');
+           
+          final file = File(filePath);
+          await file.writeAsBytes(response.bodyBytes);
+
+          if(await file.exists()){
+            debugPrint('Fichier téléchargé avec succès à : $filePath');
+
+          PermissionStatus status = await Permission.manageExternalStorage.request();
+
+          if(status.isGranted){
+          final result = await OpenFile.open(filePath);
+          debugPrint('Ouverture du fichier: ${result.message}');
+          }else{
+            debugPrint('Permission non accordée');
+          }
+          }else{
+            debugPrint('Le fichier n\'a pas été trouvé après la création.');
+          }
+
+        }else{
+           debugPrint('Répertoire de téléchargement non trouvé.');
+        }
+
+      
       }else{
         throw Exception('Erreur lors du téléchargement du fichier TCX');
       }
@@ -172,32 +208,64 @@ class StravaService {
           'Authorization':'Bearer $accessToken',
         }
       );
-      if(response.statusCode==200){
-        if(kIsWeb){
-          return;
-        }else{
-          Directory? downoaldsDirectory;
-          if(Platform.isAndroid){
-            downoaldsDirectory=Directory('/storage/emulated/0/Download');
-          }
-          else if(Platform.isIOS){
-            downoaldsDirectory=await getApplicationDocumentsDirectory();
-          }
-          if(downoaldsDirectory!=null){
-            final filepath=path.join(downoaldsDirectory.path,'route_$routeId.gpx');
-            final file = File(filepath);
-            await file.writeAsBytes(response.bodyBytes);
-          }
-        }
-        
-      }else{
-        throw Exception('Erreur lors du téléchargement du fichier GPX');
+     
+    // Vérification du statut de la réponse
+    if (response.statusCode == 200) {
+      Directory? downloadsDirectory;
+      
+      // Déterminer le répertoire de téléchargement
+      if (Platform.isAndroid) {
+        //downloadsDirectory = Directory('/storage/emulated/0/Download');
+        downloadsDirectory=await getExternalStorageDirectory();
+      } else if (Platform.isIOS) {
+        downloadsDirectory = await getApplicationDocumentsDirectory();
       }
-    }catch(e){
-      debugPrint('Erreur lors du téléchargement du GPX: $e activité id : $routeId');
-      throw Exception('Erreur lors du téléchargement du GPX');
+
+      if (downloadsDirectory != null) {
+        //final filePath = path.join(downloadsDirectory.path, 'route_$routeId.gpx');
+        final downloadPath = path.join(downloadsDirectory.path,'Download');
+        final downloadDir = Directory(downloadPath);
+
+        if(!await downloadDir.exists()){
+          await downloadDir.create(recursive: true);
+        }
+
+        final filePath = path.join(downloadPath, 'route_$routeId.gpx');
+        final file = File(filePath);
+
+        // Écrire le contenu dans le fichier
+        await file.writeAsBytes(response.bodyBytes);
+
+        // Vérification si le fichier a été créé
+        if (await file.exists()) {
+          debugPrint('Fichier téléchargé avec succès à : $filePath');
+
+          PermissionStatus status = await Permission.manageExternalStorage.request();
+
+          if(status.isGranted){
+          final result = await OpenFile.open(filePath);
+          debugPrint('Ouverture du fichier: ${result.message}');
+          }else{
+            debugPrint('Permission non accordée');
+          }
+
+          
+
+        } else {
+          debugPrint('Le fichier n\'a pas été trouvé après la création.');
+        }
+      } else {
+        debugPrint('Répertoire de téléchargement non trouvé.');
+      }
+    } else {
+      debugPrint('Erreur de téléchargement: ${response.statusCode}');
+      throw Exception('Erreur lors du téléchargement du fichier GPX');
     }
+  } catch (e) {
+    debugPrint('Erreur lors du téléchargement du GPX: $e, activité id : $routeId');
+    throw Exception('Erreur lors du téléchargement du GPX');
   }
+}
 
 // Fonction pour décoder le polyline en une liste de points LatLng
   List<LatLng> decodePolyline(String polyline) {

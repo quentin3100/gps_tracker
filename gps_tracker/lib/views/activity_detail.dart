@@ -38,7 +38,7 @@ class ActivityDetailPage extends StatelessWidget{
     try{
       await stravaService.downloadGpx(id);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fichier GPX téléchargé avec succès')),
+        const SnackBar(content: Text('Fichier GPX téléchargé avec succès')),
       );
     }catch(e){
       ScaffoldMessenger.of(context).showSnackBar(
@@ -47,7 +47,18 @@ class ActivityDetailPage extends StatelessWidget{
     }
   }
 
-  
+   void _downloadTcx(BuildContext context) async{
+    try{
+      await stravaService.downloadTCX(id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fichier TCX téléchargé avec succès')),
+      );
+    }catch(e){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors du téléchargement du TCX: $e activité id : $id')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context){
@@ -126,6 +137,13 @@ class ActivityDetailPage extends StatelessWidget{
               child: ElevatedButton(
                 onPressed: ()=>_downloadGpx(context),
                 child: const Text('Télécharger GPX'),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: ElevatedButton(
+                onPressed: ()=>_downloadTcx(context),
+                child: const Text('Télécharger TCX'),
               ),
             )
           ],
