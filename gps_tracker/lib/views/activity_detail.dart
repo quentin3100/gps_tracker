@@ -64,21 +64,27 @@ class ActivityDetailPage extends StatelessWidget{
             Text('Dénivelé: ${elevation.toStringAsFixed(0)} m'),
             Text('Description: $description'),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 CustomGauge(
+
                   value: technicalLevel,
                   maxValue: 5.0,
                   label: 'Technique',
                   color: Colors.red,
                 ),
+                const SizedBox(width: 16),
                 CustomGauge(
                   value: landscapeLevel,
                   maxValue: 5.0,
                   label: 'Paysage',
                   color: Colors.green,
                 ),
+                const SizedBox(width: 16),
                 CustomGauge(
                   value: physicalLevel,
                   maxValue: 5.0,
@@ -86,6 +92,7 @@ class ActivityDetailPage extends StatelessWidget{
                   color: Colors.blue,
                 ),
               ],
+              ),
             ),
             const SizedBox(height: 20),
             Container(

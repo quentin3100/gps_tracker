@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gps_tracker/views/activity.dart';
 
+
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   //Permettre uniquement l'orientation en mode portrait

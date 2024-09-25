@@ -8,6 +8,10 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path/path.dart'as path;
+
 
 
 class StravaService {
@@ -16,24 +20,50 @@ class StravaService {
   static late String clientId;
   static late String clientSecret;
 
-  final storage = const FlutterSecureStorage();
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
 
   StravaService(){
     _loadConfig();
+    loadTokens();
   }
 
   //Charger le fichier de configuration
   Future<void>_loadConfig() async{
     final String configString = await rootBundle.loadString('assets/config.json');
     final Map<String, dynamic> config = json.decode(configString);
-    accessToken = config['access_token'];
+    accessToken = (await _retrieveFromPreferences('access_token')) ?? '';
     refreshToken = config['refresh_token'];
     clientId = config['client_id'];
     clientSecret=config['client_secret'];
   }
 
+  Future<void> _storeInPreferences(String key, String value)async{
+    if(kIsWeb){
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString(key, value);
+    }else if (Platform.isAndroid || Platform.isIOS){
+      await storage.write(key: key, value: value);
+    }
+  }
+
+  Future<String?> _retrieveFromPreferences(String key) async{
+    if(kIsWeb){
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString(key);
+    }
+    else{
+      return await storage.read(key: key);
+    }
+  }
+
   //Rafraichir le token
   Future<void> refreshAccessToken()async{
+    final String configString = await rootBundle.loadString('assets/config.json');
+    final Map<String, dynamic> config = json.decode(configString);
+    accessToken = (await _retrieveFromPreferences('access_token')) ?? '';
+    refreshToken = config['refresh_token'];
+    clientId = config['client_id'];
+    clientSecret=config['client_secret'];
     final response = await http.post(
       Uri.parse('https://www.strava.com/oauth/token'),
       headers: {
@@ -43,6 +73,7 @@ class StravaService {
         'client_id':clientId,
         'client_secret':clientSecret,
         'refresh_token':refreshToken,
+        'grant_type':'refresh_token'
       }),
     );
 
@@ -51,6 +82,7 @@ class StravaService {
       accessToken=data['access_token'];
       refreshToken=data['refresh_token'];
       await storeTokens(accessToken,refreshToken);
+      
     }else{
       throw Exception('Echec du rafraichissement du token : ${response.statusCode}');
     }
@@ -58,12 +90,18 @@ class StravaService {
 
   //Stockage des tokens
   Future<void> storeTokens(String accessToken, String refreshToken) async{
-    await storage.write(key: 'access_token', value: accessToken);
-    await storage.write(key: 'refresh_token', value: refreshToken);
+    await _storeInPreferences('access_token',accessToken);
+    await _storeInPreferences('refresh_token',refreshToken);
+  }
+
+  Future<void> loadTokens() async {
+    accessToken = (await _retrieveFromPreferences('access_token')) ?? '';
+    refreshToken = (await _retrieveFromPreferences('refresh_token')) ?? '';
   }
 
   //Récupérer les itinéraires
   Future<List<Activity>> fetchRoutes(String athleteId) async{
+    await refreshAccessToken();
     await _loadConfig();
     if(accessToken.isEmpty){
       throw Exception('Token d\'accès introuvable');
@@ -71,7 +109,8 @@ class StravaService {
 
     final url = 'https://www.strava.com/api/v3/athletes/$athleteId/routes';
 
-    final response = await http.get(
+
+    var response = await http.get(
       Uri.parse(url),
       headers: {
         'Authorization':'Bearer $accessToken',
@@ -80,7 +119,13 @@ class StravaService {
 
     if(response.statusCode == 401){
       await refreshAccessToken();
-      return await fetchRoutes(athleteId);
+
+      response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $accessToken',  
+      }
+    );
     }
     if(response.statusCode == 200){
       final List<dynamic> activitiesJson = json.decode(response.body);
@@ -128,11 +173,23 @@ class StravaService {
         }
       );
       if(response.statusCode==200){
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/route_$routeId.gpx';
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
-        debugPrint('Fichier GPX téléchargé avec succès à : $filePath');
+        if(kIsWeb){
+          return;
+        }else{
+          Directory? downoaldsDirectory;
+          if(Platform.isAndroid){
+            downoaldsDirectory=Directory('/storage/emulated/0/Download');
+          }
+          else if(Platform.isIOS){
+            downoaldsDirectory=await getApplicationDocumentsDirectory();
+          }
+          if(downoaldsDirectory!=null){
+            final filepath=path.join(downoaldsDirectory.path,'route_$routeId.gpx');
+            final file = File(filepath);
+            await file.writeAsBytes(response.bodyBytes);
+          }
+        }
+        
       }else{
         throw Exception('Erreur lors du téléchargement du fichier GPX');
       }
