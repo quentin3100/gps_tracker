@@ -15,11 +15,11 @@ class ActivityPage extends StatefulWidget {
 class _ActivityPageState extends State<ActivityPage> {
   final StravaService stravaService = StravaService();
   List<Activity> activities = [];
+  List<Activity> filteredActivities = [];
   // Variables pour les filtres
   String selectedSport = 'Run'; // Sport initial sélectionné
   double selectedDifficulty = 2.0; // Filtrage par difficulté
   double selectedDistance = 10.0; // Distance en km
-  double selectedElevation = 200.0; // Dénivelé en
 
   @override
   void initState() {
@@ -32,9 +32,45 @@ class _ActivityPageState extends State<ActivityPage> {
       final fetchedRoutes = await stravaService.fetchRoutes('20722692');
       setState(() {
         activities = fetchedRoutes;
+        filteredActivities = activities;
+        applyFilters();
       });
     } catch (e) {
       print('Erreur lors de la récupération des itinéraires : $e');
+    }
+  }
+
+  //Application des filtres
+  void applyFilters(){
+    setState(() {
+      filteredActivities = activities.where((activity){
+        bool matchesSport = activity.getSportType() == selectedSport;
+
+        bool matchesDistance = selectedDistance>=100
+        ? true
+        :activity.distance/10.0<=selectedDistance;
+
+        bool matchesDifficulty = getDifficulty(activity.elevationGain) <= selectedDifficulty;
+
+
+        return matchesSport && matchesDistance && matchesDifficulty;
+
+      }).toList();
+    });
+  }
+
+  //Filtrer les difficultés
+  int getDifficulty(double elevationGain){
+    if (elevationGain < 500) {
+      return 1; // Très facile
+    } else if (elevationGain < 1000) {
+      return 2; // Facile
+    } else if (elevationGain < 1500) {
+      return 3; // Moyen
+    } else if (elevationGain < 2000) {
+      return 4; // Difficile
+    } else {
+      return 5; // Très difficile
     }
   }
 
@@ -86,6 +122,7 @@ class _ActivityPageState extends State<ActivityPage> {
             onSportChanged: (sport) {
               setState(() {
                 selectedSport = sport;
+                applyFilters();
               });
             },
           ),
@@ -96,36 +133,28 @@ class _ActivityPageState extends State<ActivityPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Slider(
-                  label: 'Difficulté',
+                  label: 'Difficulté ${selectedDifficulty.toStringAsFixed(0)}/5',
                   value: selectedDifficulty,
-                  min: 1,
+                  min: 0,
                   max: 5,
+                  divisions: 5,
                   onChanged: (value) {
                     setState(() {
                       selectedDifficulty = value;
+                      applyFilters();
                     });
                   },
                 ),
                 Slider(
-                  label: 'Distance (km)',
-                  value: selectedDistance,
-                  min: 1,
-                  max: 500,
-                  divisions: 50,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedDistance = value;
-                    });
-                  },
-                ),
-                Slider(
-                  label: 'Dénivelé (m)',
-                  value: selectedElevation,
+                  label: selectedDistance >= 100 ? '100+' : '${selectedDistance.toStringAsFixed(0)} km',
+                  value: selectedDistance>100?100:selectedDistance,
                   min: 0,
-                  max: 10000,
+                  max: 100,
+                  divisions: 10,
                   onChanged: (value) {
                     setState(() {
-                      selectedElevation = value;
+                      selectedDistance = value == 100?101:value;
+                      applyFilters();
                     });
                   },
                 ),
@@ -133,44 +162,48 @@ class _ActivityPageState extends State<ActivityPage> {
             ),
           ),
 
-          //Liste des activités
+          // Liste des activités filtrées
           Expanded(
-            child: ListView.builder(
-              itemCount: activities.length,
-              itemBuilder: (context, index) {
-                final route = activities[index];
-                final routePoints = stravaService.decodePolyline(route.summaryPolyline);
+            child: filteredActivities.isEmpty
+                ? const Center(
+                    child: Text('Aucune activité ne correspond à vos critères de filtrage.'),
+                  )
+                : ListView.builder(
+                    itemCount: filteredActivities.length,
+                    itemBuilder: (context, index) {
+                      final route = filteredActivities[index];
+                      final routePoints = stravaService.decodePolyline(route.summaryPolyline);
 
-                return ActivityCard(
-                  title: route.name,
-                  distance: route.distance,
-                  elevation: route.elevationGain,
-                  routePoints: routePoints,
-                  onTap: () {
-                    // Récupérer les détails de l'activité en fonction de l'index
-                    final details = getActivityDetails(index);
+                      return ActivityCard(
+                        title: route.name,
+                        distance: route.distance,
+                        elevation: route.elevationGain,
+                        routePoints: routePoints,
+                        onTap: () {
+                          // Récupérer les détails de l'activité en fonction de l'index
+                          final details = getActivityDetails(index);
 
-                    // Navigation vers la page de détails de l'itinéraire
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ActivityDetailPage(
-                          id: route.id,
-                          title: route.name,
-                          distance: route.distance,
-                          elevation: route.elevationGain,
-                          description: details['description'],
-                          technicalLevel: details['technicalLevel'],
-                          landscapeLevel: details['landscapeLevel'],
-                          physicalLevel: details['physicalLevel'],
-                          routePoints: routePoints,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                          // Navigation vers la page de détails de l'itinéraire
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ActivityDetailPage(
+                                id: route.id,
+                                title: route.name,
+                                distance: route.distance,
+                                elevation: route.elevationGain,
+                                description: details['description'],
+                                technicalLevel: details['technicalLevel'],
+                                landscapeLevel: details['landscapeLevel'],
+                                physicalLevel: details['physicalLevel'],
+                                routePoints: routePoints,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
