@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:gps_tracker/services/strava_service.dart';
+import 'package:gps_tracker/views/widgets/elevation_profil.dart';
 import 'package:gps_tracker/views/widgets/gauge.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -66,7 +67,7 @@ class ActivityDetailPage extends StatelessWidget{
       appBar: AppBar(
         title: Text(title),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,6 +133,8 @@ class ActivityDetailPage extends StatelessWidget{
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+            ElevationProfile(routePoints: routePoints),
             const SizedBox(height: 20),
             Center(
               child: ElevatedButton(

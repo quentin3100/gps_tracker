@@ -140,6 +140,8 @@ class StravaService {
     }
   }
 
+
+
   Future<void> downloadTCX(String routeId)async{
     final url = 'https://www.strava.com/api/v3/routes/$routeId/export_tcx';
     try{
@@ -281,6 +283,94 @@ class StravaService {
   }
   return points;
 }
+/*
+Future<List<double>> getElevations(List<LatLng> routePoints) async {
+  List<double> elevations = [];
 
-  
+  // Parcourir chaque point et faire une requête API pour chaque
+  for (int i = 0; i < routePoints.length; i++) {
+    final point = routePoints[i];
+    final latitude = point.latitude;
+    final longitude = point.longitude;
+
+    // Construire l'URL pour l'API Open-Meteo
+    final url = 'https://api.open-meteo.com/v1/elevation?latitude=$latitude&longitude=$longitude';
+
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      // Vérification et extraction correcte des données d'élévation
+      if (data['elevation'] is double) {
+        elevations.add(data['elevation']);
+      } else if (data['elevation'] is List && data['elevation'].isNotEmpty) {
+        // Ajouter l'élévation en fonction de l'index du point actuel
+        elevations.add((data['elevation'][0] as num).toDouble());
+      } else {
+        throw Exception('Format inattendu pour l\'élévation au point $i');
+      }
+    } else {
+      throw Exception('Erreur lors de la requête à l\'API Open-Meteo pour le point $i');
+    }
+  }
+
+  // Vérification si le nombre d'élévations correspond au nombre de points
+  if (elevations.length != routePoints.length) {
+    throw Exception('Le nombre d\'élévations ne correspond pas au nombre de points');
+  }
+
+  return elevations; // Retourner la liste des élévations
+}
+*/
+
+Future<List<double>> getElevations(List<LatLng> routePoints) async {
+  List<double> elevations = [];
+  const int batchSize = 100; // Taille du lot à traiter
+
+  // Parcourir les points par lots
+  for (int i = 0; i < routePoints.length; i += batchSize) {
+    // Créer des listes pour les latitudes et longitudes
+    List<String> latitudes = [];
+    List<String> longitudes = [];
+
+    // Remplir les listes jusqu'à batchSize
+    for (int j = i; j < i + batchSize && j < routePoints.length; j++) {
+      final point = routePoints[j];
+      latitudes.add(point.latitude.toString());
+      longitudes.add(point.longitude.toString());
+    }
+
+    // Construire l'URL pour l'API Open-Meteo
+    final latitudesString = latitudes.join(',');
+    final longitudesString = longitudes.join(',');
+    final url = 'https://api.open-meteo.com/v1/elevation?latitude=$latitudesString&longitude=$longitudesString';
+
+    // Envoyer la requête à l'API
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      // Vérification et extraction correcte des données d'élévation
+      if (data['elevation'] is List && data['elevation'].isNotEmpty) {
+        // Ajouter les élévations en fonction de la réponse
+        for (var elevation in data['elevation']) {
+          elevations.add((elevation as num).toDouble());
+        }
+      } else {
+        throw Exception('Format inattendu pour l\'élévation dans la réponse');
+      }
+    } else {
+      throw Exception('Erreur lors de la requête à l\'API Open-Meteo pour le lot à partir de l\'index $i');
+    }
+  }
+
+  // Vérification si le nombre d'élévations correspond au nombre de points
+  if (elevations.length != routePoints.length) {
+    throw Exception('Le nombre d\'élévations ne correspond pas au nombre de points');
+  }
+
+  return elevations; // Retourner la liste des élévations
+}
 }
