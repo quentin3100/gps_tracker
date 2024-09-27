@@ -21,6 +21,7 @@ class ActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const LatLng startingPoint = LatLng(46.2289085, 7.2991633);
     return GestureDetector( // Utiliser GestureDetector pour gérer le clic
       onTap: onTap,
       child: Card(
@@ -36,10 +37,10 @@ class ActivityCard extends StatelessWidget {
               height: 200,
               child: FlutterMap(
                 options: MapOptions(
-                  initialCenter: routePoints.isNotEmpty ? routePoints.first : const LatLng(46.9889, 6.9293),
-                  initialZoom: 13.0,
-                  minZoom: 13.0,
-                  maxZoom: 13.0,
+                  initialCenter: routePoints.first,
+                  initialZoom: 12.0,
+                  minZoom: 12.0,
+                  maxZoom: 12.0,
                 ),
                 children: [
                   TileLayer(
@@ -55,6 +56,17 @@ class ActivityCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  
+                  CircleLayer(
+                    circles: [
+                      CircleMarker(
+                        point: startingPoint,
+                        radius: 1000,
+                        color: Colors.black.withOpacity(1.0),
+                        useRadiusInMeter: true,
+                      )
+                    ],
+                  )
                 ],
               ),
             ),

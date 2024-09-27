@@ -75,7 +75,8 @@ class StravaService {
         'client_id':clientId,
         'client_secret':clientSecret,
         'refresh_token':refreshToken,
-        'grant_type':'refresh_token'
+        'grant_type':'refresh_token',
+        'scope': 'activity:read_all',
       }),
     );
 
@@ -118,6 +119,7 @@ class StravaService {
       Uri.parse(url),
       headers: {
         'Authorization':'Bearer $accessToken',
+        'scope': 'activity:read_all',
       }
     );
 
@@ -127,7 +129,8 @@ class StravaService {
       response = await http.get(
       Uri.parse(url),
       headers: {
-        'Authorization': 'Bearer $accessToken',  
+        'Authorization': 'Bearer $accessToken',
+        'scope': 'activity:read_all',
       }
     );
     }

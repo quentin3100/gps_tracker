@@ -80,6 +80,7 @@ class ActivityDetailPage extends StatefulWidget{
 
   @override
   Widget build(BuildContext context){
+    const LatLng  startPoint = LatLng(46.2289085, 7.2991633);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -160,6 +161,16 @@ class ActivityDetailPage extends StatefulWidget{
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                  CircleLayer(
+                    circles: [
+                      CircleMarker(
+                        point: startPoint,
+                        radius: 1000,
+                        color: Colors.black.withOpacity(1.0),
+                        useRadiusInMeter: true,
+                      )
                     ],
                   )
                 ],

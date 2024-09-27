@@ -19,13 +19,14 @@ class _ActivityPageState extends State<ActivityPage> {
   // Variables pour les filtres
   String selectedSport = 'Run'; // Sport initial sélectionné
   double selectedDifficulty = 2.0; // Filtrage par difficulté
-  double selectedDistance = 10.0; // Distance en km
+  double selectedDistance = 20.0; // Distance en km
   int currentPage=1;
   final int _perPage=30;
   bool isLoading=false;
   bool hasMoreActivities = true;
   bool _isSearchingAll =false;
   late ScrollController scrollController;
+  String sortOrder = 'asc'; // 'asc' pour croissant, 'desc' pour décroissant
 
   @override
   void initState() {
@@ -39,6 +40,17 @@ class _ActivityPageState extends State<ActivityPage> {
     scrollController.dispose();
     super.dispose();
   }
+
+ void sortActivitiesByDistance() {
+  activities.sort((a, b) {
+    if (sortOrder == 'asc') {
+      return a.distance.compareTo(b.distance); // Tri croissant
+    } else {
+      return b.distance.compareTo(a.distance); // Tri décroissant
+    }
+  });
+  applyFilters(); // Réapplique les filtres après le tri
+}
 
   Future<void> fetchRoutes({int page=1}) async {
     if(isLoading || !hasMoreActivities)return;
@@ -56,6 +68,7 @@ class _ActivityPageState extends State<ActivityPage> {
           activities.addAll(fetchedRoutes??[]);
         }
         filteredActivities = activities;
+        sortActivitiesByDistance();
         currentPage=page;
         hasMoreActivities=fetchedRoutes!=null && fetchedRoutes.length == _perPage;
         applyFilters();
@@ -195,6 +208,29 @@ class _ActivityPageState extends State<ActivityPage> {
                 applyFilters();
               });
             },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: DropdownButton<String>(
+              value: sortOrder,
+              items: const [
+                DropdownMenuItem(
+                  value: 'asc',
+                  child: Text('Distance : Croissant'),
+                ),
+                DropdownMenuItem(
+                  value: 'desc',
+                  child: Text('Distance : Décroissant'),
+                ),
+              ],
+              onChanged: (String? newValue){
+                setState(() {
+                  sortOrder=newValue!;
+                  sortActivitiesByDistance();
+                });
+              },
+
+              ),
           ),
           //Filtres
           Padding(
