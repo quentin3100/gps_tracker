@@ -20,23 +20,93 @@ class _ActivityPageState extends State<ActivityPage> {
   String selectedSport = 'Run'; // Sport initial sélectionné
   double selectedDifficulty = 2.0; // Filtrage par difficulté
   double selectedDistance = 10.0; // Distance en km
+  int currentPage=1;
+  final int _perPage=30;
+  bool isLoading=false;
+  bool hasMoreActivities = true;
+  bool _isSearchingAll =false;
+  late ScrollController scrollController;
 
   @override
   void initState() {
     super.initState();
-    fetchRoutes();
+    scrollController=ScrollController()..addListener(_scrollListener);
+    fetchRoutes(page: currentPage);
   }
 
-  void fetchRoutes() async {
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> fetchRoutes({int page=1}) async {
+    if(isLoading || !hasMoreActivities)return;
+    setState(() {
+       isLoading=true;
+    });
+   
     try {
-      final fetchedRoutes = await stravaService.fetchRoutes('20722692');
+      final fetchedRoutes = await stravaService.fetchRoutes('20722692',page: page,perPage: _perPage);
+      
       setState(() {
-        activities = fetchedRoutes;
+        if(page==1){
+          activities=fetchedRoutes??[];
+        }else{
+          activities.addAll(fetchedRoutes??[]);
+        }
         filteredActivities = activities;
+        currentPage=page;
+        hasMoreActivities=fetchedRoutes!=null && fetchedRoutes.length == _perPage;
         applyFilters();
       });
+      
     } catch (e) {
       print('Erreur lors de la récupération des itinéraires : $e');
+    }finally{
+      setState(() {
+        isLoading=false;
+      });
+      
+    }
+  }
+
+  Future<void> fetchAllRoutes()async{
+    int page =1;
+    bool hasMore =true;
+    List<Activity> allActivities = [];
+
+    while(hasMore){
+      try{
+        final activities = await stravaService.fetchRoutes('20722692',page: page,perPage: _perPage);
+        if(activities!=null && activities.isNotEmpty){
+          allActivities.addAll(activities);
+          page++;
+          hasMore=activities.length == _perPage;
+        }else{
+          hasMore=false;
+        }
+      }catch(e){
+        break;
+      }
+    }
+    setState(() {
+      activities=allActivities;
+    });
+  }
+
+  void _scrollListener() {
+    if (scrollController.position.pixels == scrollController.position.maxScrollExtent && hasMoreActivities) {
+      //currentPage++; // Increment the page number
+      fetchRoutes(page:currentPage+1); // Fetch the next page
+    }
+  }
+
+  Future<void>_refresh()async{
+    if(_isSearchingAll){
+      await fetchAllRoutes();
+    }else{
+      await fetchRoutes(page: 1);
     }
   }
 
@@ -133,6 +203,7 @@ class _ActivityPageState extends State<ActivityPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Slider(
+
                   label: 'Difficulté ${selectedDifficulty.toStringAsFixed(0)}/5',
                   value: selectedDifficulty,
                   min: 0,
@@ -164,13 +235,19 @@ class _ActivityPageState extends State<ActivityPage> {
 
           // Liste des activités filtrées
           Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refresh,
             child: filteredActivities.isEmpty
                 ? const Center(
                     child: Text('Aucune activité ne correspond à vos critères de filtrage.'),
                   )
                 : ListView.builder(
-                    itemCount: filteredActivities.length,
+                    controller: scrollController,
+                    itemCount: filteredActivities.length +(isLoading?1:0),
                     itemBuilder: (context, index) {
+                      if (index == filteredActivities.length) {
+                        return isLoading ? const Center(child: CircularProgressIndicator()):const SizedBox.shrink();
+                      }
                       final route = filteredActivities[index];
                       final routePoints = stravaService.decodePolyline(route.summaryPolyline);
 
@@ -204,6 +281,7 @@ class _ActivityPageState extends State<ActivityPage> {
                       );
                     },
                   ),
+          ),
           ),
         ],
       ),

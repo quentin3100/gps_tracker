@@ -102,14 +102,16 @@ class StravaService {
   }
 
   //Récupérer les itinéraires
-  Future<List<Activity>> fetchRoutes(String athleteId) async{
+  Future<List<Activity>?> fetchRoutes(String athleteId, {int page=1, int perPage=30}) async{
     await refreshAccessToken();
     await _loadConfig();
     if(accessToken.isEmpty){
       throw Exception('Token d\'accès introuvable');
     }
 
-    final url = 'https://www.strava.com/api/v3/athletes/$athleteId/routes';
+    
+
+    final url = 'https://www.strava.com/api/v3/athletes/$athleteId/routes?page=$page&per_page=$perPage';
 
 
     var response = await http.get(
